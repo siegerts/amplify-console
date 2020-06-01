@@ -30,5 +30,5 @@ Looking for one of our other projects?
   * [Amplify JS](https://github.com/aws-amplify/amplify-js/issues)
   * [Amplify CLI](https://github.com/aws-amplify/amplify-cli/issues)
   * [Amplify Community](https://amplify.aws/community)  
-  * [AWS SDK for iOS](https://github.com/aws-amplify/aws-sdk-ios/issues)
-  * [AWS SDK for Android](https://github.com/aws-amplify/aws-sdk-android/issues)
+  * [AWS SDK for iOS](https://github.com/aws-amplify/amplify-ios/issues)
+  * [AWS SDK for Android](https://github.com/aws-amplify/amplify-android/issues)
