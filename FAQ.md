@@ -14,7 +14,9 @@
   - [How do I override a build timeout?](#how-do-i-override-a-build-timeout)
   - [How do I pull private packages during a build?](#how-do-i-pull-private-packages-during-a-build)
   - [How do I run Amplify functions with Python runtime?](#how-do-i-run-amplify-functions-with-python-runtime)
-  - [How do I reduce the `node_modules` cache size?](#how-do-i-reduce-the-node_modules-cache-size)
+  - [Cache](#cache)
+    - [How do I reduce the cache size?](#how-do-i-reduce-the-cache-size)
+    - [How do I disable reading from cache?](#how-do-i-disable-reading-from-cache)
 - [Redirects](#redirects)
   - [Access denied for certain routes even with SPA redirect rule](#access-denied-for-certain-routes-even-with-spa-redirect-rule)
 - [Custom Domains](#custom-domains)
@@ -22,6 +24,8 @@
   - [CNAMEAlreadyExistsException](#cnamealreadyexistsexception)
 - [Web previews](#web-previews)
   - [Previews are not being created for new pull requests](#previews-are-not-being-created-for-new-pull-requests)
+- [SSR](#ssr)
+  - [Convert an SSR App to SSG](#convert-an-ssr-app-to-ssg)
 
 ## Builds
 
@@ -46,7 +50,7 @@ backend:
 
 ### How do I override a build timeout?
 
-The default build timeout is 30 minutes. You can override the default build timeout using an environment variable: `_BUILD_TIMEOUT` (App settings > Environment variables). The minimum build timeout is 5 minutes.
+The default build timeout is 30 minutes. You can override the default build timeout using an environment variable: `_BUILD_TIMEOUT` (App settings > Environment variables). The minimum build timeout is 5 minutes.  The maximum build timeout is 120 minutes.
 
 ### How do I pull private packages during a build?
 
@@ -89,16 +93,23 @@ backend:
         - amplifyPush --simple
 ```
 
-### How do I reduce the `node_modules` cache size?
+### Cache
+#### How do I reduce the cache size?
 
-If you are caching your `node_modules` directory, you may be inadvertently caching webpack, terser and babel files which aren't cleaned up and bloat your cache. It can also cause your build to run out of memory in the caching step. To fix, omit your `.cache` directory using the `!` directive, i.e.:
+If you are using cache, you may be inadvertently caching intermediate files which aren't cleaned up between builds and bloat your cache. To omit certain folders, use the `!` directive, i.e.:
 
 ```yaml
 cache:
   paths:
     - node_modules/**/*
-    - "!node_modules/.cache"
+    - "!node_modules/path/not/to/cache"
 ```
+
+`node_modules/.cache` is omitted by default if you cache `node_modules`
+
+#### How do I disable reading from cache?
+
+If you ever specified a cache, it will continue to pull down the cache even if you remove the cache section from your buildspec.  To disable reading from cache, set the `AWS_CACHE_BUCKET_READ` environment variable to `false` in `App settings > Environment variables`
 
 ## Redirects
 
@@ -175,3 +186,33 @@ Common reasons why pull requests previews may not be created:
 - The Amplify app has hit the [max branches per app](https://docs.aws.amazon.com/general/latest/gr/amplify.html) quota. Consider enabling branch auto deletion in your app so that you don't accumulate branches that no longer exist in your repo. 
 
 - If you are using a public GitHub repository and your Amplify app has an IAM [service role](https://docs.aws.amazon.com/amplify/latest/userguide/how-to-service-role-amplify-console.html) associated to it, previews will not be created for security reasons. In this case, you can either disassociate the service role from your App if the app doesn't have a backend, or make the GitHub repository private. 
+
+
+## SSR
+**Amplify SSR Docs**: https://docs.aws.amazon.com/amplify/latest/userguide/server-side-rendering-amplify.html
+
+With frameworks like Next.js you can create apps that are dynamic, use SSR (server side rendering), or static (SSG). If you create an SSG app and want to convert it to use SSR, you can follow our guide [here](https://docs.aws.amazon.com/amplify/latest/userguide/server-side-rendering-amplify.html#redeploy-ssg-to-ssr).
+
+If you need to revert your app back to SSG, we suggest you delete your app and create a new one following the [guide](https://docs.aws.amazon.com/amplify/latest/userguide/server-side-rendering-amplify.html#deploy-nextjs-app) for how to get your app to be detected as SSG. **But if that is not an option and you need to revert existing app back to SSG**, please follow the guide below.
+
+### Convert an SSR App to SSG
+1. Run the following AWS CLI commands
+```
+aws amplify update-app --app-id <APP_ID> --platform WEB --region <REGION>
+aws amplify update-branch --app-id <APP_ID> --branch-name <BRANCH_NAME> --framework 'Next.js - SSG' --region <REGION>
+```
+*Note, if your app uses an Amplify Backend, then set your framework field to be* 'Next.js - SSG - Amplify'
+
+2. Update your build spec to point the 'baseDirectory' to 'out'. e.g.
+```
+version: 1
+frontend:
+  ...
+  artifacts:
+    baseDirectory: out
+  ...
+```
+
+3. Update the build command in your package.json to use `next export`, then commit this to trigger a new non SSR build.
+
+4. Finally, go to the `Rewrites and redirects` tab in the Amplify Console, and delete the first rewrite rule that was re-writing to your SSR CloudFront Distribution.
